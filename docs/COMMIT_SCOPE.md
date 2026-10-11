@@ -39,3 +39,7 @@
 - 使用明确路径暂存，随后用 `git diff --cached --stat`、`git diff --cached` 审查。
 - `git ls-files --stage` 不应包含 `vendor/`、测试素材、本机运行目录，或模式为 `160000` 的 submodule 条目。
 - 正式提交前运行 `npm test`，确认自动测试通过。
+
+## 后续 macOS 音频扩展
+
+源码继续按同一边界维护：`native/macos/` 收录 Swift 和 Info.plist，`scripts/build-audio-helper.mjs` 收录本机编译入口，`src/audio.mjs` 收录采集协调，新增实机脚本与自动测试纳入源码。`.build/` 编译产物、`.sv-agent/recordings/` 录音和 `test_results/macos/` 证据留在本机，不提交。参考项目仍不提交或引入 submodule。

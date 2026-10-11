@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { capabilities } from '../src/tools.mjs';
 import os from 'node:os';
 import * as fs from 'node:fs/promises';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -11,7 +12,7 @@ test('stdio MCP exposes structured tools and reports offline without stale data'
   const transport=new StdioClientTransport({command:process.execPath,args:[path.resolve('src/cli.mjs'),'--dir',dir],stderr:'pipe'});
   t.after(async()=>{await client.close();await fs.rm(dir,{recursive:true,force:true});});
   await client.connect(transport);
-  const tools=await client.listTools();assert.equal(tools.tools.length,15);
+  const tools=await client.listTools();assert.equal(tools.tools.length,capabilities().tools.length);
   assert.ok(tools.tools.some(x=>x.name==='sv_update_notes'));
   const status=await client.callTool({name:'sv_status',arguments:{}});assert.equal(JSON.parse(status.content[0].text).online,false);
   const read=await client.callTool({name:'sv_get_project_summary',arguments:{}});

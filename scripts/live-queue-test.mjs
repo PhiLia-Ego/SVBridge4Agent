@@ -1,6 +1,7 @@
 // Edits only agent_queue_test.svp, then restores the captured live state.
 import assert from 'node:assert/strict';
 import path from 'node:path';
+import { capabilities } from '../src/tools.mjs';
 import { randomUUID } from 'node:crypto';
 import * as fs from 'node:fs/promises';
 import { Client } from '@modelcontextprotocol/sdk/client/index.js';
@@ -27,7 +28,7 @@ async function call(name,args={}) {
 async function notes(){return call('sv_get_notes',{groupUuid,count:2000});}
 try {
   await client.connect(transport);
-  const tools=await client.listTools();assert.equal(tools.tools.length,15);await fs.writeFile(path.join(output,'tools.json'),JSON.stringify(tools,null,2));
+  const tools=await client.listTools();assert.equal(tools.tools.length,capabilities().tools.length);await fs.writeFile(path.join(output,'tools.json'),JSON.stringify(tools,null,2));
   const status=await call('sv_status');assert.equal(status.online,true);
   assert.equal(status.session.projectFile,path.join(root,'test_proj/agent_queue_test.svp'));
   sessionId=status.session.sessionId;
@@ -86,7 +87,7 @@ try {
     const snapshot=await call('sv_read_project');const before=JSON.parse(await fs.readFile(path.join(output,'before.json'),'utf8'));
     assert.deepEqual(snapshot,before,'Live project was not fully restored');
     await fs.writeFile(path.join(output,'restored.json'),JSON.stringify(snapshot,null,2));
-    await fs.writeFile(path.join(output,'summary.json'),JSON.stringify({sessionId,projectFile:summary.projectFile,referencedNotes:1197,libraryNotesCompared:summary.libraryNoteCount,tools:15,calls:log.length,restored:true,latencyMs:log.map(x=>x.elapsedMs)},null,2));
+    await fs.writeFile(path.join(output,'summary.json'),JSON.stringify({sessionId,projectFile:summary.projectFile,referencedNotes:1197,libraryNotesCompared:summary.libraryNoteCount,tools:capabilities().tools.length,calls:log.length,restored:true,latencyMs:log.map(x=>x.elapsedMs)},null,2));
     console.log('Live snapshot restored exactly to the captured baseline.');
   }
   await client.close();

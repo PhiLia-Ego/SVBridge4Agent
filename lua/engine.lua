@@ -38,7 +38,7 @@ local function applyPatch(note,patch)
   -- Resolve object references before mutation: changing onsets can reorder the group.
   for _,k in ipairs({'duration','onset','pitch','lyrics','phonemes'}) do if patch[k]~=nil then note[setters[k]](note,patch[k]) end end
 end
-function M.create(SV)
+function M.create(SV,extension)
   local api={}
   local function project() return SV:getProject() end
   local function group(uuid)
@@ -202,6 +202,7 @@ function M.create(SV)
     if not fn or method=='execute' then M.fail('UNKNOWN_METHOD','Unsupported operation '..tostring(method)) end
     return fn(p,ctx)
   end
+  if extension then extension(api,{SV=SV,json=json,project=project,group=group,revision=revision,trackUuid=trackUuid,mutate=mutate,hash=hash,keys=keys,check=check,integer=integer,list=list,fail=M.fail}) end
   return api
 end
 return M

@@ -91,3 +91,15 @@ MCP 读取请求默认绑定调用开始时的会话，也可显式传 sessionId
 | REPLY_MISMATCH / PROTOCOL_ERROR | 修复通信文件/版本问题，不把该回复当成成功 |
 
 历史文件不会自动删除，以保留去重和故障调查依据。停止全部相关进程后可以归档整个通信目录；重新初始化后启动新会话。不要只删除去重记录而继续使用同一个会话。
+
+## 结构、时间轴与唱法版本
+
+`sv_get_project_structure` 在原摘要上增加混音器、组引用 voice/muted 与各组音符/曲线版本，计算独立的工程 revision。结构、混音器、唱法、速度拍号操作要求 `expectedProjectRevision`，冲突返回 `PROJECT_REVISION_CONFLICT`。删除轨道可能更换第一条轨道主组 UUID；桥接仅在自己成功执行创建/删除轨道后更新 projectToken，保持当前逻辑会话。用户重新打开工程或改变该身份仍会停止桥接。
+
+速度标记 position 为 blick；拍号 measure 为从零开始的小节编号。原点标记不能删除，库组须先解除引用，主组不能解除引用，最后一条轨道不能删除。Voice 修改为结构化默认参数和具名 vocalModeParams，不提供声库选择。模式名需与歌手相符；宿主可能省略默认值，且数字回读可能为 Float32 精度。
+
+## 音频结果记录
+
+macOS 采集由 Node 与 Swift 执行，播放控制继续使用既有队列；不是发送给 Lua 的录音方法。`recordings/capture.lock` 协调录音，`recordings/<id>.json` 保存 executing/completed/failed 记录，WAV 使用同名 ID。音频 ID 的去重空间独立于 Lua 请求 ID。超时后使用 `sv_get_audio_result` 检查，同 ID 不会重新播放录音；不同参数返回 `REQUEST_ID_CONFLICT`。
+
+静音、丢帧、播放停止/倒退、系统授权或辅助进程失败都不会报告为成功音频。正常退出尝试恢复原播放位置；进程崩溃可能仍需用户停止播放。详细生命周期与限制见 [macOS 音频说明](MACOS_AUDIO.md)。

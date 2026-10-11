@@ -3,7 +3,8 @@ assert(type(bus)=='string' and type(sourceDir)=='string','Install with scripts/i
 bus=bus:gsub('/+$','')
 local json=assert(loadfile(sourceDir..'/json.lua'))()
 local engine=assert(loadfile(sourceDir..'/engine.lua'))(json)
-local api=engine.create(SV)
+local extension=assert(loadfile(sourceDir..'/extended.lua'))()
+local api=engine.create(SV,extension)
 local VERSION=1
 local session,config,stopped,runtimeId
 local function now() return os.time()*1000 end
@@ -66,7 +67,12 @@ local function process(item)
     if now()+1000>=request.deadlineAt then engine.fail('REQUEST_EXPIRED','Request expired before execution') end
     if exists(file('cancellations',id)) then engine.fail('REQUEST_CANCELLED','Request cancelled before execution') end
     atomic(file('receipts',id),{id=id,sessionId=session.sessionId,state='executing',startedAt=now(),request=fingerprint})
-    return api.execute(request.method,request.params,ctx)
+    local result=api.execute(request.method,request.params,ctx)
+    -- Intentional track changes can replace the first main group used as project identity.
+    if request.method=='sv_create_track' or request.method=='sv_remove_track' then
+      session.projectToken=projectToken(); publishSession('running')
+    end
+    return result
   end)
   local response
   if ok and type(value)=='table' and value.cachedReply then response=value.cachedReply

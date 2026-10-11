@@ -8,7 +8,7 @@ const transport=new StdioClientTransport({command:process.execPath,args:[path.jo
 try {
   await client.connect(transport);
   const name=process.argv[2]??'sv_status';
-  const result=name==='list' ? await client.listTools() : await client.callTool({name,arguments:JSON.parse(process.argv[3]??'{}')});
+  const result=name==='list' ? await client.listTools() : await client.callTool({name,arguments:JSON.parse(process.argv[3]??'{}')},undefined,{timeout:180000});
   console.log(JSON.stringify(result,null,2));
   if(result.isError) process.exitCode=1;
 } finally { await client.close(); }

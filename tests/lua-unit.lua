@@ -110,6 +110,32 @@ function project:getNumNoteGroupsInLibrary() return 1 end
 function project:getNoteGroup() return extra end
 assert(api.sv_read_project({}).groups['unreferenced-group'].notes[1].pitch==55,'Unreferenced library group was omitted')
 function project:getNumNoteGroupsInLibrary() return 0 end
+-- Structural guards cover manual note edits and reject complete invalid batches before undo.
+local voice={vocalModeParams={Soft={pitch=100,timbre=100,pronunciation=100}}}
+function ref:getVoice() return json.decode(json.encode(voice)) end
+function ref:setVoice(p) for k,v in pairs(p)do voice[k]=v end end
+function ref:isMuted()return false end
+local mixer={gainDecibel=0,pan=0,muted=false,solo=false}
+for _,k in ipairs({'gainDecibel','pan','muted','solo'})do
+ local upper=k:sub(1,1):upper()..k:sub(2)
+ mixer[(k=='muted' or k=='solo') and 'is'..upper or 'get'..upper]=function(self)return self[k]end
+ mixer['set'..upper]=function(self,v)self[k]=v end
+end
+function track:getMixer()return mixer end
+local extended=engine.create(SV,assert(loadfile(sourceDir..'/extended.lua'))())
+local function structure()return extended.sv_get_project_structure({})end
+local sr=structure().revision;group.notes[1].lyrics='结构保护手改'
+expectError('PROJECT_REVISION_CONFLICT',function()extended.sv_set_track_mixer({expectedProjectRevision=sr,trackIndex=1,trackUuid='group-uuid',set={pan=.5}}, {})end)
+local undoBefore=project.undos
+expectError('INVALID_ARGUMENT',function()extended.sv_set_track_mixer({expectedProjectRevision=structure().revision,trackIndex=1,trackUuid='group-uuid',set={pan=.5,gainDecibel=25}}, {})end)
+assert(mixer.pan==0 and project.undos==undoBefore)
+extended.sv_set_track_mixer({expectedProjectRevision=structure().revision,trackIndex=1,trackUuid='group-uuid',set={pan=.5}}, {})
+assert(mixer.pan==.5 and structure().revision~=sr)
+expectError('INVALID_ARGUMENT',function()extended.sv_set_time_axis(params({expectedProjectRevision=structure().revision,tempo={{position=100,bpm=120},{position=200,bpm=-1}}}), {})end)
+assert(project.undos==undoBefore+1)
+extended.sv_set_voice_attributes({expectedProjectRevision=structure().revision,trackIndex=1,trackUuid='group-uuid',referenceIndex=1,groupUuid='group-uuid',attributes={vocalModeParams={Soft={pitch=80}}}}, {})
+assert(voice.vocalModeParams.Soft.pitch==80 and voice.vocalModeParams.Soft.timbre==100,'Nested voice patch erased untouched fields')
+expectError('INVALID_ARGUMENT',function()extended.sv_detach_note_group({expectedProjectRevision=structure().revision,trackIndex=1,trackUuid='group-uuid',referenceIndex=1,groupUuid='group-uuid'}, {})end)
 local function write(path,value) local f=assert(io.open(path,'w')); f:write(json.encode(value)); f:close() end
 local function read(path) local f=assert(io.open(path,'r'));local out=json.decode(f:read('*a'));f:close();return out end
 write(bus..'/bridge-config.json',{protocolVersion=1,pollMs=50,heartbeatMs=1000,staleMs=6000,maxPerTick=4})

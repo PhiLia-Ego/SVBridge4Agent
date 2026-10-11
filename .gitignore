@@ -1,0 +1,33 @@
+# Dependencies and local bridge runtime (requests, receipts, replies, locks)
+node_modules/
+/.sv-agent/
+
+# Reference checkout: local only, never vendored or registered as a submodule
+/vendor/
+
+# Machine-specific Codex configuration
+/.codex/
+
+# Local Studio projects, audio assets, probe output and live-test evidence
+/test_proj/
+/test_results/
+
+# Historical Harmony / transport experiments; not part of this implementation
+/scripts/harmony_client.mjs
+/scripts/live_test.mjs
+/scripts/file_import_test.mjs
+/scripts/read_stress.mjs
+/scripts/CommunicationProbe.lua
+/scripts/communication_helper.py
+/scripts/communication_peer.py
+/scripts/communication_queue_peer.py
+
+# Local environment and temporary files
+.env
+.env.*
+!.env.example
+__pycache__/
+*.py[cod]
+*.tmp
+*.log
+.DS_Store

@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "synthv-agent": {
+      "command": "node",
+      "args": [
+        "/absolute/path/to/sv_studio4agent/src/cli.mjs",
+        "--dir",
+        "/absolute/path/to/sv_studio4agent/.sv-agent"
+      ]
+    }
+  }
+}

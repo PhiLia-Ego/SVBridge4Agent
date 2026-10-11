@@ -1,0 +1,24 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import os from 'node:os';
+import * as fs from 'node:fs/promises';
+import { Client } from '@modelcontextprotocol/sdk/client/index.js';
+import { StdioClientTransport } from '@modelcontextprotocol/sdk/client/stdio.js';
+test('stdio MCP exposes structured tools and reports offline without stale data',async t=>{
+  const dir=await fs.mkdtemp(path.join(os.tmpdir(),'sv-mcp-test-'));
+  const client=new Client({name:'test',version:'1'});
+  const transport=new StdioClientTransport({command:process.execPath,args:[path.resolve('src/cli.mjs'),'--dir',dir],stderr:'pipe'});
+  t.after(async()=>{await client.close();await fs.rm(dir,{recursive:true,force:true});});
+  await client.connect(transport);
+  const tools=await client.listTools();assert.equal(tools.tools.length,15);
+  assert.ok(tools.tools.some(x=>x.name==='sv_update_notes'));
+  const status=await client.callTool({name:'sv_status',arguments:{}});assert.equal(JSON.parse(status.content[0].text).online,false);
+  const read=await client.callTool({name:'sv_get_project_summary',arguments:{}});
+  assert.equal(read.isError,true);assert.equal(JSON.parse(read.content[0].text).error.code,'BRIDGE_OFFLINE');
+  const invalid=await client.callTool({name:'sv_update_notes',arguments:{groupUuid:'a',expectedRevision:'a',updates:[{index:1,set:{pitch:200}}]}});
+  assert.equal(invalid.isError,true);
+  const unpinned=await client.callTool({name:'sv_playback',arguments:{action:'play'}});
+  assert.equal(unpinned.isError,true);assert.match(unpinned.content[0].text,/sessionId/);
+  assert.deepEqual(await fs.readdir(path.join(dir,'requests')),[]);
+});

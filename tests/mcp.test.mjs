@@ -14,6 +14,9 @@ test('stdio MCP exposes structured tools and reports offline without stale data'
   await client.connect(transport);
   const tools=await client.listTools();assert.equal(tools.tools.length,capabilities().tools.length);
   assert.ok(tools.tools.some(x=>x.name==='sv_update_notes'));
+  const pointsSchema=tools.tools.find(x=>x.name==='sv_set_parameter_points').inputSchema.properties.points.items;
+  assert.equal(pointsSchema.items.type,'number');
+  assert.equal(pointsSchema.minItems,2);assert.equal(pointsSchema.maxItems,2);
   const status=await client.callTool({name:'sv_status',arguments:{}});assert.equal(JSON.parse(status.content[0].text).online,false);
   const read=await client.callTool({name:'sv_get_project_summary',arguments:{}});
   assert.equal(read.isError,true);assert.equal(JSON.parse(read.content[0].text).error.code,'BRIDGE_OFFLINE');
@@ -21,5 +24,9 @@ test('stdio MCP exposes structured tools and reports offline without stale data'
   assert.equal(invalid.isError,true);
   const unpinned=await client.callTool({name:'sv_playback',arguments:{action:'play'}});
   assert.equal(unpinned.isError,true);assert.match(unpinned.content[0].text,/sessionId/);
+  for(const point of [[-1,0],[.5,0],[Number.MAX_SAFE_INTEGER+1,0],[0],[0,0,0],[0,'bad']]){
+    const invalidPoint=await client.callTool({name:'sv_set_parameter_points',arguments:{sessionId:'test',groupUuid:'a',expectedRevision:'a',parameter:'tension',points:[point]}});
+    assert.equal(invalidPoint.isError,true);assert.match(invalidPoint.content[0].text,/Input validation error/);
+  }
   assert.deepEqual(await fs.readdir(path.join(dir,'requests')),[]);
 });

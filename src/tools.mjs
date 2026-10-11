@@ -5,6 +5,12 @@ const index = z.number().int().min(1);
 const text = z.string().max(4096);
 const groupUuid = z.string().min(1).max(80);
 const expectedRevision = z.string().min(1).describe('Revision returned by sv_get_notes/sv_get_parameter_points. Reread after every edit.');
+// Homogeneous array items keep the MCP schema compatible with Codex's tool loader.
+// Retain the [blickPosition, value] wire format and validate the position at runtime.
+const parameterPoint = z.array(z.number()).length(2).refine(
+  point => Number.isSafeInteger(point[0]) && point[0] >= 0,
+  'Point position must be a nonnegative safe integer in blicks',
+).describe('Exactly two numbers: [nonnegative integer blick position, parameter value].');
 const noteFields = {
   onset: integer, duration: integer.min(1), pitch: z.number().int().min(0).max(127), lyrics: text, phonemes: text,
 };
@@ -18,7 +24,7 @@ export const toolDefinitions = {
   sv_add_notes: { description: 'Add notes to a group in one undo record. Return the new group revision. Host may reorder notes by onset.', schema: z.object({ groupUuid, expectedRevision, notes: z.array(z.object({ ...noteFields, phonemes: text.optional() }).strict()).min(1).max(1000) }).strict() },
   sv_delete_notes: { description: 'Remove 1-based note indices from a group in one undo record. Check the revision first.', schema: z.object({ groupUuid, expectedRevision, indices: z.array(index).min(1).max(1000) }).strict() },
   sv_get_parameter_points: { description: 'Read group parameter definitions and control points plus the group revision.', schema: z.object({ groupUuid, parameter: z.enum(['pitchDelta','vibratoEnv','loudness','tension','breathiness','voicing','gender','toneShift']) }).strict(), readOnly: true },
-  sv_set_parameter_points: { description: 'Replace or merge group control points in one undo record. Positions are blicks; values must fit the host parameter range.', schema: z.object({ groupUuid, expectedRevision, parameter: z.enum(['pitchDelta','vibratoEnv','loudness','tension','breathiness','voicing','gender','toneShift']), mode: z.enum(['replace','merge']).default('replace'), points: z.array(z.tuple([integer,z.number()])).max(2000) }).strict() },
+  sv_set_parameter_points: { description: 'Replace or merge group control points in one undo record. Positions are blicks; values must fit the host parameter range.', schema: z.object({ groupUuid, expectedRevision, parameter: z.enum(['pitchDelta','vibratoEnv','loudness','tension','breathiness','voicing','gender','toneShift']), mode: z.enum(['replace','merge']).default('replace'), points: z.array(parameterPoint).max(2000) }).strict() },
   sv_rename_track: { description: 'Rename one track in an undo record. trackUuid (main group UUID) and expectedName prevent targeting a moved/replaced track.', schema: z.object({ trackIndex: index, trackUuid: groupUuid, expectedName: text, name: text.min(1) }).strict() },
   sv_playback: { description: 'Control play/pause/stop/seek. seek uses seconds, not blicks.', schema: z.object({ action: z.enum(['play','pause','stop','seek']), seconds: z.number().min(0).max(86400).optional() }).strict() },
   sv_stop_bridge: { description: 'Stop this bridge session cleanly, leaving Studio and its project open.', schema: z.object({}).strict() },
